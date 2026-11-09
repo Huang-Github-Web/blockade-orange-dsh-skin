@@ -1,5 +1,7 @@
 node_modules/
 *.log
 .DS_Store
+# Local scratch/test artifacts
+.scratch/
 # Local, non-redistributable font files
 fonts/borda-*.woff2

@@ -1,6 +1,6 @@
 {
   "name": "@local/paper-skin",
-  "version": "2.3.2",
+  "version": "2.3.4",
   "private": false,
   "type": "module",
   "description": "Blockade Orange — Division-style HUD skin for the Harness Web UI: translucent gray floating panels, crisis-orange focus, Borda typography (local use), and HUD chrome.",

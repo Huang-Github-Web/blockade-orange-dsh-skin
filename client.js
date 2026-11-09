@@ -907,7 +907,9 @@ html:root body [data-chat-flow-kind] :not(pre) > code {
   html:root body [data-slot="conversation.composer"] [class*="_card"],
   html:root body [data-sidebar-right-panel],
   html:root body [data-sidebar-right-panel="fullscreen"],
+  html:root body [data-menu-material="translucent"],
   html:root body [class*="_overlay"]:has([class*="_navList"]) > [class*="_panel"] {
+    --dsw-menu-backdrop-filter: none !important;
     backdrop-filter: none !important;
     -webkit-backdrop-filter: none !important;
   }
@@ -1057,6 +1059,12 @@ html:root body[data-hud-idle]::after {
 html:root body[data-hud-lite] [data-slot="conversation.composer"] [class*="_card"],
 html:root body[data-hud-lite] [data-sidebar-right-panel="fullscreen"],
 html:root body[data-hud-lite] [class*="_overlay"]:has([class*="_navList"]) > [class*="_panel"] {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+html:root body[data-hud-lite] [data-menu-material="translucent"] {
+  --dsw-menu-backdrop-filter: none !important;
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
 }
@@ -3328,11 +3336,15 @@ html:root body [class*="_popover_"] {
   backdrop-filter: var(--dsw-menu-backdrop-filter);
 }
 
-/* Composer slash and @ suggestion menu (input-trigger MenuSurface): the host
-   paints its material layer at 70% white, which lets the transcript read
-   straight through the popup. The material reads --dsw-menu-surface-fill, so
-   re-point it at the same panel-opacity slider the dialogs use, and keep the
-   bottom fade gradient in step. */
+/* Composer suggestion popups (MenuSurface): the host paints the material layer
+   at 70% white and gives it a fixed frost radius, so the transcript shows
+   straight through the popup and the theme's background-blur slider never
+   reaches it. Two things follow:
+   1. the skills/@ menu's fill follows the panel-opacity slider, and
+   2. every translucent menu surface blurs with the same --hud-settings-blur the
+      dialogs use, so the UI behind the popup is frosted instead of sharp at 50%.
+   Blur the surface itself, not only its negative-z-index material layer: in
+   Chromium that layer can be skipped even while its fill still paints. */
 html:root body [data-trigger-menu] {
   --dsw-menu-surface-fill: rgba(244, 255, 255, var(--hud-settings-alpha, 0.97));
   --dsw-specific-menu: rgba(244, 255, 255, var(--hud-settings-alpha, 0.97));
@@ -3341,6 +3353,44 @@ html:root body [data-trigger-menu] {
 html:root body[data-ds-dark-theme] [data-trigger-menu] {
   --dsw-menu-surface-fill: rgba(16, 17, 20, var(--hud-settings-alpha, 0.97));
   --dsw-specific-menu: rgba(16, 17, 20, var(--hud-settings-alpha, 0.97));
+}
+
+/* Covers the slash/command window, the model and job pickers, context menus —
+   every floating popup built on the shared MenuSurface material. */
+html:root body [data-menu-material="translucent"] {
+  --dsw-menu-backdrop-filter: blur(var(--hud-settings-blur, 18px)) saturate(112%);
+  -webkit-backdrop-filter: blur(var(--hud-settings-blur, 18px)) saturate(112%);
+  backdrop-filter: blur(var(--hud-settings-blur, 18px)) saturate(112%);
+}
+
+/* Body-level frost for the composer popup (see the script half). The popup sits
+   inside the sticky, composited composer seat, so its own backdrop-filter can
+   only sample that empty layer and the page behind stays sharp. This layer is
+   positioned under the popup and tracks its rect; z-index 8 is above page
+   content but below the composer seat (z-index 9) that owns the popup. */
+.dsh-hud-menu-frost {
+  position: fixed;
+  left: 0;
+  top: 0;
+  width: 0;
+  height: 0;
+  z-index: 8;
+  display: none;
+  pointer-events: none;
+  border-radius: var(--dsw-radius-lg, 6px);
+  background: rgba(255, 255, 255, 0.001);
+  -webkit-backdrop-filter: blur(var(--hud-settings-blur, 18px)) saturate(112%);
+  backdrop-filter: blur(var(--hud-settings-blur, 18px)) saturate(112%);
+}
+
+html:root body[data-hud-lite] .dsh-hud-menu-frost {
+  display: none !important;
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .dsh-hud-menu-frost {
+    display: none !important;
+  }
 }
 `;
 
@@ -4419,6 +4469,67 @@ html:root body[data-ds-dark-theme] [data-trigger-menu] {
             document.removeEventListener('visibilitychange', onVis);
             document.documentElement.removeAttribute('data-hud-blur');
             dim.remove();
+          };
+        });
+
+        // Menu frost: the composer's command/@ popup is a descendant of the
+        // sticky, composited composer seat, so its own backdrop-filter only
+        // samples that empty layer and the transcript behind stays sharp (a
+        // body-level probe blurs fine, proving the limit is the compositing
+        // ancestor). Paint the frost from a body-level layer that tracks the
+        // visible popup's rect instead. z-index 8 sits above page content and
+        // below the composer seat (z-index 9) that owns the popup.
+        ctx.effect(() => {
+          const frost = document.createElement('div');
+          frost.className = 'dsh-hud-menu-frost';
+          document.body.appendChild(frost);
+
+          let handle = 0;
+          const findMenu = () => {
+            const nodes = document.querySelectorAll('[data-menu-material="translucent"]');
+            for (const el of nodes) {
+              if (!el.closest('[data-composer-overlay]') && !el.closest('[data-slot="conversation.input.overlay"]')) continue;
+              const rect = el.getBoundingClientRect();
+              const cs = getComputedStyle(el);
+              if (rect.width > 1 && rect.height > 1 && cs.display !== 'none' && cs.visibility !== 'hidden') {
+                return { rect, radius: cs.borderTopLeftRadius };
+              }
+            }
+            return null;
+          };
+
+          const step = () => {
+            handle = 0;
+            const off = document.documentElement.classList.contains('dsh-skin-off')
+              || document.body.dataset.hudLite === 'true';
+            const hit = off ? null : findMenu();
+            if (!hit) {
+              frost.style.display = 'none';
+              return;
+            }
+            frost.style.display = 'block';
+            frost.style.left = hit.rect.left + 'px';
+            frost.style.top = hit.rect.top + 'px';
+            frost.style.width = hit.rect.width + 'px';
+            frost.style.height = hit.rect.height + 'px';
+            if (hit.radius) frost.style.borderRadius = hit.radius;
+            handle = requestAnimationFrame(step);
+          };
+
+          const wake = () => { if (!handle) handle = requestAnimationFrame(step); };
+
+          const mo = new MutationObserver(wake);
+          mo.observe(document.body, { childList: true, subtree: true });
+          window.addEventListener('resize', wake);
+          window.addEventListener('scroll', wake, true);
+          wake();
+
+          return () => {
+            mo.disconnect();
+            window.removeEventListener('resize', wake);
+            window.removeEventListener('scroll', wake, true);
+            if (handle) cancelAnimationFrame(handle);
+            frost.remove();
           };
         });
 

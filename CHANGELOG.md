@@ -1,5 +1,22 @@
 # Changelog
 
+## 2.3.4
+
+- Composer popups (the `/` command window and `@` suggestions) now get a real
+  frosted background. They live inside the sticky, composited composer seat, so
+  the host's `backdrop-filter` on the popup could only sample that empty layer
+  and the UI behind stayed sharp. A body-level frost layer now tracks the popup's
+  rect and paints the blur at the root, where `backdrop-filter` works. It follows
+  the **背景模糊 · Background blur** setting and switches off in lite mode and
+  under reduced transparency.
+
+## 2.3.3
+
+- First attempt at tying menu-popup frost to the **背景模糊 · Background blur**
+  setting. It re-pointed the shared MenuSurface material at the setting, which
+  worked for menus portaled outside the composer, but the composer popup
+  (inside the composited `composerSeat`) stayed sharp. Superseded by 2.3.4.
+
 ## 2.3.2
 
 - Boot-in: the sidebar and dock slide in from their own edges with a single
