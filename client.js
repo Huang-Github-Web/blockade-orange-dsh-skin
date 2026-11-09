@@ -853,15 +853,24 @@ html:root body [data-chat-flow-kind="user"]::before {
   background: var(--dsw-alias-brand-primary);
 }
 
-/* Code blocks: a terminal-ish plate — darker than the page, hairline frame and
-   a lit top edge. */
+/* Code blocks: a terminal-ish plate in dark mode and a paper plate in light
+   mode. Shiki-highlighted blocks keep the host's own background, so the
+   skin only paints plain (unlabelled or unknown-language) blocks. */
 html:root body [data-chat-flow-kind] pre {
-  background: rgba(6, 7, 9, 0.72);
   border: 0.5px solid var(--dsw-alias-border-l1);
-  border-top: 1.5px solid rgba(255, 127, 0, 0.45);
   border-radius: 2px;
   padding: 12px 14px;
   overflow: auto;
+}
+
+html:root body:not([data-ds-dark-theme]) [data-chat-flow-kind] pre:not([class*="_shiki"]) {
+  background: rgba(20, 22, 26, 0.05);
+  border-top: 1.5px solid rgba(217, 102, 0, 0.35);
+}
+
+html:root body[data-ds-dark-theme] [data-chat-flow-kind] pre:not([class*="_shiki"]) {
+  background: rgba(6, 7, 9, 0.72);
+  border-top: 1.5px solid rgba(255, 127, 0, 0.45);
 }
 
 html:root body [data-chat-flow-kind] pre code {
