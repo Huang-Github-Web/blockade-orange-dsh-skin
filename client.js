@@ -3327,6 +3327,21 @@ html:root body [class*="_popover_"] {
   -webkit-backdrop-filter: var(--dsw-menu-backdrop-filter);
   backdrop-filter: var(--dsw-menu-backdrop-filter);
 }
+
+/* Composer slash and @ suggestion menu (input-trigger MenuSurface): the host
+   paints its material layer at 70% white, which lets the transcript read
+   straight through the popup. The material reads --dsw-menu-surface-fill, so
+   re-point it at the same panel-opacity slider the dialogs use, and keep the
+   bottom fade gradient in step. */
+html:root body [data-trigger-menu] {
+  --dsw-menu-surface-fill: rgba(244, 255, 255, var(--hud-settings-alpha, 0.97));
+  --dsw-specific-menu: rgba(244, 255, 255, var(--hud-settings-alpha, 0.97));
+}
+
+html:root body[data-ds-dark-theme] [data-trigger-menu] {
+  --dsw-menu-surface-fill: rgba(16, 17, 20, var(--hud-settings-alpha, 0.97));
+  --dsw-specific-menu: rgba(16, 17, 20, var(--hud-settings-alpha, 0.97));
+}
 `;
 
     // ── HUD stat cluster ─────────────────────────────────────────────────────
