@@ -2958,24 +2958,19 @@ html:root body ::-webkit-scrollbar-thumb:active {
   background: linear-gradient(180deg, rgba(255, 190, 110, 0.95), rgba(232, 145, 45, 0.8));
 }
 
-/* Turn navigator rail (right edge jump marks). The host hides it when its
-   inline-size container measures <=900px; the skin's column padding made that
-   container narrower than the column, so let the nearest conversation
-   container drive the query instead and drop the rail's inset padding. */
+/* Turn navigator rail: keep the host's native layout, spacing, virtualization
+   and preview behavior. Only the minimum adapters the skin needs:
+   - let the rail ignore the app-frame container query that hid it;
+   - keep its internal scrollbar hidden (the skin's global scrollbar rule
+     would otherwise re-enable it);
+   - give the virtualized mark box the width the host expects;
+   - accent the active Turn with the skin's brand color. */
 html:root body [class*="SNx2jG_slot"] {
   container-type: normal !important;
-  padding-inline: 0 !important;
 }
 
-/* The skin styles every scrollbar, which re-enabled one inside the rail's
-   internal scroller that the host deliberately hides; that extra scrollbar
-   fights the rail while it scrolls and reads as flicker. Keep it hidden. */
 html:root body [class*="SNx2jG_scroller"] {
   scrollbar-width: none !important;
-  /* The host toggles fadeTop/fadeBottom mask-image classes while the rail
-     scrolls; on a scaled layer that mask swap flashes the top bars. */
-  mask-image: none !important;
-  -webkit-mask-image: none !important;
 }
 
 html:root body [class*="SNx2jG_scroller"]::-webkit-scrollbar {
@@ -2985,39 +2980,20 @@ html:root body [class*="SNx2jG_scroller"]::-webkit-scrollbar {
 }
 
 html:root body [class*="SNx2jG_frame"] [class*="_mark"] {
-  width: 100% !important;
+  width: auto !important;
 }
 
-/* The host draws a focus-visible outline (::after) in addition to the active
-   bar; hide it here so the selected Turn shows exactly one bar. */
-html:root body [class*="SNx2jG_frame"] [class*="_mark"]::after {
-  display: none !important;
-  content: none !important;
-}
-
-/* Compact the fixed 10px pitch: the virtualizer still positions marks at 10px,
-   so squeeze the finished stack vertically instead. */
-html:root body [class*="SNx2jG_marks"] {
-  scale: 1 0.4;
-  transform-origin: 50% 50%;
-}
-
+/* Under the skin the virtualized mark box measures 0 wide; anchor the native
+   bar to its left edge with a fixed width so the host's own 20px dash shows. */
 html:root body [class*="SNx2jG_frame"] [class*="_mark"]::before {
-  background: rgba(128, 132, 138, 0.55) !important;
-  opacity: 1 !important;
-  height: 5px !important;
-}
-
-html:root body [class*="SNx2jG_frame"] [class*="_markUnloaded"]::before {
-  opacity: 1 !important;
+  left: 0 !important;
+  right: auto !important;
+  width: 20px !important;
 }
 
 html:root body [class*="SNx2jG_frame"] [class*="_markActive"]::before {
-  background: var(--dsw-alias-brand-primary) !important;
-  opacity: 1 !important;
   width: 25px !important;
-  height: 10px !important;
-  transform: translateY(-50%) scaleX(1) !important;
+  background: var(--dsw-alias-brand-primary) !important;
 }
 
 /* Segmented readout bar, like a Division armour/health strip. */
