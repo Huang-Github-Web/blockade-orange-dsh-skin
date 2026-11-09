@@ -1896,6 +1896,47 @@ html:root body [class*="_centerCol"]::before {
   font-variant-numeric: tabular-nums;
 }
 
+/* Font section: sample string rendered in the three faces. */
+.dsh-hud-settings__fontpreview {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0 0 8px;
+  padding: 6px 8px;
+  border: 0.5px solid var(--dsw-alias-border-l1);
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.04);
+  min-width: 0;
+}
+
+.dsh-hud-settings__fontlabel {
+  font-size: 11px;
+  color: var(--dsw-alias-label-secondary);
+}
+
+.dsh-hud-settings__fontline {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+}
+
+.dsh-hud-settings__fontkind {
+  flex: 0 0 auto;
+  width: 74px;
+  font-size: 11px;
+  color: var(--dsw-alias-label-secondary);
+}
+
+.dsh-hud-settings__fontsamp {
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-size: 13px;
+  color: var(--dsw-alias-label-primary);
+}
+
 .dsh-hud-settings__range-wrap {
   display: inline-flex;
   align-items: center;
@@ -3195,6 +3236,19 @@ html:root body[data-ds-dark-theme] [data-changes-hover-preview] {
   background: rgba(16, 17, 20, var(--hud-settings-alpha, 0.95)) !important;
 }
 
+/* Custom fonts (Settings -> 字体 · Typography): the UI font feeds the host's
+   text-font list, the conversation font is scoped to the transcript only. Both
+   live inside this stylesheet, so the skin master switch and uninstall own
+   their lifecycle. */
+html.paper-ui-font-active:not(.dsh-skin-off) body {
+  --dsh-font-family-text: var(--paper-ui-font, "Borda", "Titillium Web", "Noto Sans SC", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", -apple-system, system-ui, sans-serif) !important;
+}
+
+html:not(.dsh-skin-off) [data-slot="conversation.chat.flow"],
+html:not(.dsh-skin-off) [data-slot="conversation.chat.flow"] :not(pre, pre *, code, code *, kbd, kbd *, samp, samp *) {
+  font-family: var(--paper-conv-font, "Borda", "Titillium Web", "Noto Sans SC", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", -apple-system, system-ui, sans-serif) !important;
+}
+
 html:root body [class*="_popover_"] {
   background: var(--dsw-specific-menu) !important;
   -webkit-backdrop-filter: var(--dsw-menu-backdrop-filter);
@@ -3233,7 +3287,9 @@ html:root body [class*="_popover_"] {
       bg: '',               // custom background: a CSS image value or a data URL
       showStats: true,      // sidebar readout cluster (bottom-left stats panel)
       settingsFill: 0.97,   // settings dialog panel opacity, 0..1 (1 = opaque)
-      settingsBlur: 0.6,    // background blur behind dialogs, 0.3..1 (30%..100%)
+      settingsBlur: 0.6,    // background blur behind dialogs, 0..1 (0%..100%)
+      uiFont: '',           // interface font list; empty = skin default Borda
+      convFont: '',         // conversation-only font list; empty = skin default Borda
     };
 
     const HUD_LEGACY_KEYS = ['paper-skin.hud.v8', 'paper-skin.hud.v7', 'paper-skin.hud.v6', 'paper-skin.hud.v5', 'paper-skin.hud.v4', 'paper-skin.hud.v3', 'paper-skin.hud.v2'];
@@ -3292,6 +3348,52 @@ html:root body [class*="_popover_"] {
       try { localStorage.setItem(HUD_KEY, JSON.stringify(next)); } catch (error) { /* private mode */ }
       window.dispatchEvent(new CustomEvent('paper-skin:hud'));
       return next;
+    }
+
+    // ── Custom fonts (UI + conversation) ─────────────────────────────────────
+    const FONT_FALLBACK = '"Borda", "Titillium Web", "Noto Sans SC", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", -apple-system, system-ui, sans-serif';
+    const FONT_GENERIC = new Set([
+      'serif', 'sans-serif', 'monospace', 'cursive', 'fantasy', 'system-ui',
+      'ui-serif', 'ui-sans-serif', 'ui-monospace', 'ui-rounded', 'emoji',
+      'math', 'fangsong', 'inherit', 'initial', 'unset', 'revert',
+    ]);
+    const FONT_PREVIEW_TEXT = '封锁橙 Blockade Orange 0123456789 !@#$%^&*()_+-=[]{}<>/\\|~ 你好，世界';
+
+    function normalizeFontFamilyList(raw) {
+      const parts = String(raw || '').split(',').map((s) => s.trim()).filter(Boolean);
+      if (!parts.length) return '';
+      const out = [];
+      for (const part of parts) {
+        const bare = part.replace(/^['"]+|['"]+$/g, '').replace(/["\\<>]/g, '').trim();
+        if (!bare) continue;
+        out.push(FONT_GENERIC.has(bare.toLowerCase()) ? bare : '"' + bare + '"');
+      }
+      return out.join(', ');
+    }
+
+    function fontStackFor(raw) {
+      const list = normalizeFontFamilyList(String(raw || '').trim());
+      return list ? list + ', ' + FONT_FALLBACK : FONT_FALLBACK;
+    }
+
+    // One-time import of the values the standalone paper-conv-font plugin wrote.
+    function migrateLegacyFonts() {
+      try {
+        const legacyUi = localStorage.getItem('paper-ui-font');
+        const legacyConv = localStorage.getItem('paper-conv-font');
+        if (!legacyUi && !legacyConv) return;
+        const cfg = readHudConfig();
+        const patch = {};
+        if (!cfg.uiFont && legacyUi) patch.uiFont = legacyUi;
+        if (!cfg.convFont && legacyConv) patch.convFont = legacyConv;
+        if (Object.keys(patch).length) {
+          writeHudConfig(patch);
+          try {
+            localStorage.removeItem('paper-ui-font');
+            localStorage.removeItem('paper-conv-font');
+          } catch (error) { /* private mode */ }
+        }
+      } catch (error) { /* private mode */ }
     }
 
     const ICONS = {
@@ -3481,6 +3583,19 @@ html:root body [class*="_popover_"] {
       // options that only make sense under a particular parent choice.
       const condRow = (visible, label, control) => (visible ? row(label, control) : null);
 
+      // Font preview: one sample string rendered normal / bold / italic.
+      const fontPreview = (label, raw) => {
+        const stack = fontStackFor(raw);
+        const line = (kind, weight, style) => h('div', { className: 'dsh-hud-settings__fontline' },
+          h('span', { className: 'dsh-hud-settings__fontkind' }, kind),
+          h('span', { className: 'dsh-hud-settings__fontsamp', style: { fontWeight: weight, fontStyle: style, fontFamily: stack } }, FONT_PREVIEW_TEXT));
+        return h('div', { className: 'dsh-hud-settings__fontpreview' },
+          h('div', { className: 'dsh-hud-settings__fontlabel' }, label),
+          line('常规 · Normal', 400, 'normal'),
+          line('粗体 · Bold', 700, 'normal'),
+          line('斜体 · Italic', 400, 'italic'));
+      };
+
       const statsOn = config.showStats !== false;
       const isAccount = config.baseline === 'account';
       const isFreeish = config.baseline === 'free' || config.baseline === 'composer';
@@ -3569,6 +3684,25 @@ html:root body [class*="_popover_"] {
             },
           }),
           h('span', { className: 'dsh-hud-settings__rangesuffix' }, '%'))),
+        h('h3', { className: 'dsh-hud-settings__subtitle' }, '字体 · Typography'),
+        row('UI 字体 · Interface font', h('span', { className: 'dsh-hud-settings__bg' },
+          h('input', {
+            type: 'text',
+            className: 'dsh-hud-settings__num',
+            value: config.uiFont || '',
+            placeholder: '例如 Microsoft YaHei',
+            onChange: (event) => update({ uiFont: event.target.value }),
+          }))),
+        fontPreview('UI 字体预览 · Interface preview', config.uiFont),
+        row('对话字体 · Conversation font', h('span', { className: 'dsh-hud-settings__bg' },
+          h('input', {
+            type: 'text',
+            className: 'dsh-hud-settings__num',
+            value: config.convFont || '',
+            placeholder: '例如 LXGW WenKai',
+            onChange: (event) => update({ convFont: event.target.value }),
+          }))),
+        fontPreview('对话字体预览 · Conversation preview', config.convFont),
         h('h3', { className: 'dsh-hud-settings__subtitle' }, '读数面板 · Readout panel'),
         row('显示统计面板 · Show stats panel', toggle('showStats')),
         condRow(statsOn, '列数 · Columns', segment('cols', [[1, '1'], [2, '2']])),
@@ -4203,6 +4337,7 @@ html:root body [class*="_popover_"] {
         // document idle when the window is hidden so nothing animates off-screen.
         ctx.effect(() => {
           const apply = () => {
+            try { migrateLegacyFonts(); } catch (error) { /* private mode */ }
             let config = {};
             try { config = readHudConfig(); } catch (error) { /* private mode */ }
             if (config.lite) document.body.dataset.hudLite = 'true';
@@ -4239,6 +4374,17 @@ html:root body [class*="_popover_"] {
             } else {
               document.documentElement.style.removeProperty('--hud-settings-blur');
             }
+
+            // Custom fonts: stored with the skin config, applied only while the
+            // skin is on; the stylesheet carries the scoped rules.
+            const uiFont = String(config.uiFont || '').trim();
+            const convFont = String(config.convFont || '').trim();
+            const skinOn = config.enabled !== false;
+            document.documentElement.classList.toggle('paper-ui-font-active', skinOn && !!uiFont);
+            if (skinOn && uiFont) document.documentElement.style.setProperty('--paper-ui-font', fontStackFor(uiFont));
+            else document.documentElement.style.removeProperty('--paper-ui-font');
+            if (skinOn && convFont) document.documentElement.style.setProperty('--paper-conv-font', fontStackFor(convFont));
+            else document.documentElement.style.removeProperty('--paper-conv-font');
           };
           apply();
           const onHud = () => apply();
@@ -4253,6 +4399,9 @@ html:root body [class*="_popover_"] {
           return () => {
             window.removeEventListener('paper-skin:hud', onHud);
             document.removeEventListener('visibilitychange', onVisibility);
+            document.documentElement.classList.remove('paper-ui-font-active');
+            document.documentElement.style.removeProperty('--paper-ui-font');
+            document.documentElement.style.removeProperty('--paper-conv-font');
           };
         });
 
