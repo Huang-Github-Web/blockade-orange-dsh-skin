@@ -3249,6 +3249,18 @@ html:not(.dsh-skin-off) [data-slot="conversation.chat.flow"] :not(pre, pre *, co
   font-family: var(--paper-conv-font, "Borda", "Titillium Web", "Noto Sans SC", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", -apple-system, system-ui, sans-serif) !important;
 }
 
+/* Context-panel floating tips (dsh-context `.lc-tip`): layer-2 is too clear
+   for a text card, so it follows the same opacity and blur sliders. */
+html:root body .lc-tip {
+  background: rgba(244, 255, 255, var(--hud-settings-alpha, 0.95)) !important;
+  -webkit-backdrop-filter: blur(var(--hud-settings-blur, 18px)) saturate(112%);
+  backdrop-filter: blur(var(--hud-settings-blur, 18px)) saturate(112%);
+}
+
+html:root body[data-ds-dark-theme] .lc-tip {
+  background: rgba(16, 17, 20, var(--hud-settings-alpha, 0.95)) !important;
+}
+
 html:root body [class*="_popover_"] {
   background: var(--dsw-specific-menu) !important;
   -webkit-backdrop-filter: var(--dsw-menu-backdrop-filter);
