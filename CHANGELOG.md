@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.3.5
+
+- Window-unfocus dim now also frosts the window: `.dsh-hud-dim` gets a
+  `backdrop-filter` whose radius comes from the **背景模糊 · Background blur**
+  setting, so the whole HUD blurs (not just dims) when the app loses focus. It
+  is dropped in lite mode and under reduced transparency.
+
 ## 2.3.4
 
 - Composer popups (the `/` command window and `@` suggestions) now get a real

@@ -908,6 +908,7 @@ html:root body [data-chat-flow-kind] :not(pre) > code {
   html:root body [data-sidebar-right-panel],
   html:root body [data-sidebar-right-panel="fullscreen"],
   html:root body [data-menu-material="translucent"],
+  html:root body .dsh-hud-dim,
   html:root body [class*="_overlay"]:has([class*="_navList"]) > [class*="_panel"] {
     --dsw-menu-backdrop-filter: none !important;
     backdrop-filter: none !important;
@@ -1058,6 +1059,7 @@ html:root body[data-hud-idle]::after {
 
 html:root body[data-hud-lite] [data-slot="conversation.composer"] [class*="_card"],
 html:root body[data-hud-lite] [data-sidebar-right-panel="fullscreen"],
+html:root body[data-hud-lite] .dsh-hud-dim,
 html:root body[data-hud-lite] [class*="_overlay"]:has([class*="_navList"]) > [class*="_panel"] {
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
@@ -1365,18 +1367,22 @@ html:root body[data-hud-no-dockstyle] [class*="_rightbarCol"] {
   transform: none !important;
 }
 
-/* Window blur dim. */
+/* Window blur dim: while the app is unfocused it dims AND frosts the whole
+   window, with the frost radius coming from the same 背景模糊 · Background blur
+   setting the rest of the skin uses. */
 .dsh-hud-dim {
   position: fixed;
   inset: 0;
   z-index: 9998;
   pointer-events: none;
   background: rgba(4, 5, 7, 0);
-  transition: background-color 220ms ease;
+  transition: background-color 220ms ease, backdrop-filter 220ms ease, -webkit-backdrop-filter 220ms ease;
 }
 
 html:root[data-hud-blur] .dsh-hud-dim {
   background: rgba(4, 5, 7, 0.34);
+  -webkit-backdrop-filter: blur(var(--hud-settings-blur, 18px)) saturate(112%);
+  backdrop-filter: blur(var(--hud-settings-blur, 18px)) saturate(112%);
 }
 
 /* The host's sidebar toggle lives inside the 3D-tilted sidebar column, so it
