@@ -77,8 +77,8 @@ html:root body {
        3. ghost layer (.11 white) further back, giving the projected 3D feel
      CSS paints shadows in order, so the black layer is listed first (nearest). */
   text-shadow:
-    0 1px 1px rgba(0, 0, 0, 0.10),
-    0 2px 2px rgba(0, 0, 0, 0.05);
+    0 1px 1px rgba(0, 0, 0, calc(0.10 * var(--hud-text-shadow, 1))),
+    0 2px 2px rgba(0, 0, 0, calc(0.05 * var(--hud-text-shadow, 1)));
   --dsw-alias-bg-layer-3: rgba(234, 236, 239, 0.48);
   --dsw-alias-border-l3: rgba(20, 22, 26, 0.24);
   --dsw-alias-border-l4: rgba(20, 22, 26, 0.32);
@@ -150,8 +150,8 @@ html:root body {
 
 html:root body[data-ds-dark-theme] {
   text-shadow:
-    0 1px 1px rgba(0, 0, 0, 0.33),
-    0 3px 2px rgba(255, 255, 255, 0.11);
+    0 1px 1px rgba(0, 0, 0, calc(0.33 * var(--hud-text-shadow, 1))),
+    0 3px 2px rgba(255, 255, 255, calc(0.11 * var(--hud-text-shadow, 1)));
   --dsw-alias-bg-layer-3: rgba(44, 46, 52, 0.42);
   --dsw-alias-label-tertiary: #7c828b;
   --dsw-alias-border-l3: rgba(255, 255, 255, 0.18);
@@ -2033,7 +2033,7 @@ html:root body[data-ds-dark-theme] [class*="_overlay"]:has([class*="_navList"]) 
    and needs no extra shadow. */
 html:root body[data-ds-dark-theme] [class*="_overlay"]:has([class*="_navList"]) [class*="_panel"],
 html:root body[data-ds-dark-theme] [class*="_overlay"]:has([class*="_navList"]) [class*="_panel"] * {
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.65);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, calc(0.65 * var(--hud-text-shadow, 1)));
 }
 
 html:root body [class*="_overlay"]:has([class*="_navList"]) [class*="_mask"] {
@@ -3290,6 +3290,8 @@ html:root body [class*="_popover_"] {
       settingsBlur: 0.6,    // background blur behind dialogs, 0..1 (0%..100%)
       uiFont: '',           // interface font list; empty = skin default Borda
       convFont: '',         // conversation-only font list; empty = skin default Borda
+      textShadow: true,     // the skin's legibility shadow on body text
+      textShadowStrength: 1, // 0..1 multiplier; 100% = the original shadow
     };
 
     const HUD_LEGACY_KEYS = ['paper-skin.hud.v8', 'paper-skin.hud.v7', 'paper-skin.hud.v6', 'paper-skin.hud.v5', 'paper-skin.hud.v4', 'paper-skin.hud.v3', 'paper-skin.hud.v2'];
@@ -3703,6 +3705,35 @@ html:root body [class*="_popover_"] {
             onChange: (event) => update({ convFont: event.target.value }),
           }))),
         fontPreview('对话字体预览 · Conversation preview', config.convFont),
+        row('文字阴影 · Text shadow', toggle('textShadow')),
+        condRow(config.textShadow !== false, '阴影强度 · Shadow strength', h('span', { className: 'dsh-hud-settings__range-wrap' },
+          h('input', {
+            type: 'range',
+            min: 0,
+            max: 100,
+            step: 1,
+            className: 'dsh-hud-settings__range',
+            value: Math.round(Number(config.textShadowStrength) * 100),
+            onChange: (event) => {
+              const pct = Number(event.target.value);
+              if (Number.isFinite(pct)) update({ textShadowStrength: Math.min(100, Math.max(0, Math.round(pct))) / 100 });
+            },
+          }),
+          h('input', {
+            type: 'number',
+            className: 'dsh-hud-settings__rangeinput',
+            min: 0,
+            max: 100,
+            step: 1,
+            value: Math.round(Number(config.textShadowStrength) * 100),
+            onChange: (event) => {
+              const raw = event.target.value;
+              if (raw === '') return;
+              const pct = Number(raw);
+              if (Number.isFinite(pct)) update({ textShadowStrength: Math.min(100, Math.max(0, Math.round(pct))) / 100 });
+            },
+          }),
+          h('span', { className: 'dsh-hud-settings__rangesuffix' }, '%'))),
         h('h3', { className: 'dsh-hud-settings__subtitle' }, '读数面板 · Readout panel'),
         row('显示统计面板 · Show stats panel', toggle('showStats')),
         condRow(statsOn, '列数 · Columns', segment('cols', [[1, '1'], [2, '2']])),
@@ -4385,6 +4416,14 @@ html:root body [class*="_popover_"] {
             else document.documentElement.style.removeProperty('--paper-ui-font');
             if (skinOn && convFont) document.documentElement.style.setProperty('--paper-conv-font', fontStackFor(convFont));
             else document.documentElement.style.removeProperty('--paper-conv-font');
+
+            // Text shadow: a 0..1 multiplier over the skin's built-in shadows.
+            const shadowOn = config.textShadow !== false;
+            const strength = Number(config.textShadowStrength);
+            const factor = shadowOn
+              ? (Number.isFinite(strength) ? Math.min(1, Math.max(0, strength)) : 1)
+              : 0;
+            document.documentElement.style.setProperty('--hud-text-shadow', String(factor));
           };
           apply();
           const onHud = () => apply();
@@ -4402,6 +4441,7 @@ html:root body [class*="_popover_"] {
             document.documentElement.classList.remove('paper-ui-font-active');
             document.documentElement.style.removeProperty('--paper-ui-font');
             document.documentElement.style.removeProperty('--paper-conv-font');
+            document.documentElement.style.removeProperty('--hud-text-shadow');
           };
         });
 
