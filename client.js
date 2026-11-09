@@ -2928,19 +2928,21 @@ html:root body:has([data-chat-running], [data-streaming]) .dsh-hud-stats {
   .dsh-hud-stats__sweep { display: none; }
 }
 
-/* Scrollbars join the same language: hairline rail, orange on hover. */
+/* Scrollbars join the same language: a theme-aware rail, orange on hover. The
+   fill uses the scrollbar tokens so it stays visible in the light theme too. */
 html:root body ::-webkit-scrollbar {
   width: 9px;
   height: 9px;
 }
 
 html:root body ::-webkit-scrollbar-track {
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.02), rgba(255, 255, 255, 0.05));
+  background: transparent;
 }
 
 html:root body ::-webkit-scrollbar-thumb {
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.22), rgba(255, 255, 255, 0.14));
-  box-shadow: inset 0 0 0 0.5px rgba(255, 255, 255, 0.10);
+  min-height: 32px;
+  background: linear-gradient(180deg, var(--dsw-alias-scrollbar-bg-l2), var(--dsw-alias-scrollbar-bg-l1));
+  box-shadow: inset 0 0 0 0.5px var(--dsw-alias-border-l1);
   border-radius: 0;
   transition: background 160ms ease, box-shadow 160ms ease;
 }
@@ -2954,6 +2956,29 @@ html:root body ::-webkit-scrollbar-thumb:hover {
 
 html:root body ::-webkit-scrollbar-thumb:active {
   background: linear-gradient(180deg, rgba(255, 190, 110, 0.95), rgba(232, 145, 45, 0.8));
+}
+
+/* Turn navigator rail (right edge jump marks). The host hides it below a
+   container width of 900px; with the skin's column geometry that threshold is
+   hit too early, so keep it mounted and give it the skin palette: grey marks,
+   brand orange for the active Turn. */
+html:root body [class*="_frame"]:has([class*="_marks"]) {
+  display: block !important;
+}
+
+html:root body [class*="_frame"]:has([class*="_marks"]) [class*="_mark"]::before {
+  background: rgba(128, 132, 138, 0.55) !important;
+  opacity: 1 !important;
+}
+
+html:root body [class*="_frame"]:has([class*="_marks"]) [class*="_markUnloaded"]::before {
+  opacity: 0.4 !important;
+}
+
+html:root body [class*="_frame"]:has([class*="_marks"]) [class*="_markActive"]::before {
+  background: var(--dsw-alias-brand-primary) !important;
+  opacity: 1 !important;
+  transform: translateY(-50%) scaleX(1) !important;
 }
 
 /* Segmented readout bar, like a Division armour/health strip. */
