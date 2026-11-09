@@ -2958,27 +2958,65 @@ html:root body ::-webkit-scrollbar-thumb:active {
   background: linear-gradient(180deg, rgba(255, 190, 110, 0.95), rgba(232, 145, 45, 0.8));
 }
 
-/* Turn navigator rail (right edge jump marks). The host hides it below a
-   container width of 900px; with the skin's column geometry that threshold is
-   hit too early, so keep it mounted and give it the skin palette: grey marks,
-   brand orange for the active Turn. Scope strictly to the rail frame — the
-   generic [class*="_frame"] would also match the app's layout frame. */
-html:root body :is([class*="SNx2jG_frame"], [data-conversation-scroll] [class*="_frame"]:has([class*="_marks"])) {
-  display: block !important;
+/* Turn navigator rail (right edge jump marks). The host hides it when its
+   inline-size container measures <=900px; the skin's column padding made that
+   container narrower than the column, so let the nearest conversation
+   container drive the query instead and drop the rail's inset padding. */
+html:root body [class*="SNx2jG_slot"] {
+  container-type: normal !important;
+  padding-inline: 0 !important;
 }
 
-html:root body :is([class*="SNx2jG_frame"], [data-conversation-scroll] [class*="_frame"]:has([class*="_marks"])) [class*="_mark"]::before {
+/* The skin styles every scrollbar, which re-enabled one inside the rail's
+   internal scroller that the host deliberately hides; that extra scrollbar
+   fights the rail while it scrolls and reads as flicker. Keep it hidden. */
+html:root body [class*="SNx2jG_scroller"] {
+  scrollbar-width: none !important;
+  /* The host toggles fadeTop/fadeBottom mask-image classes while the rail
+     scrolls; on a scaled layer that mask swap flashes the top bars. */
+  mask-image: none !important;
+  -webkit-mask-image: none !important;
+}
+
+html:root body [class*="SNx2jG_scroller"]::-webkit-scrollbar {
+  width: 0 !important;
+  height: 0 !important;
+  display: none !important;
+}
+
+html:root body [class*="SNx2jG_frame"] [class*="_mark"] {
+  width: 100% !important;
+}
+
+/* The host draws a focus-visible outline (::after) in addition to the active
+   bar; hide it here so the selected Turn shows exactly one bar. */
+html:root body [class*="SNx2jG_frame"] [class*="_mark"]::after {
+  display: none !important;
+  content: none !important;
+}
+
+/* Compact the fixed 10px pitch: the virtualizer still positions marks at 10px,
+   so squeeze the finished stack vertically instead. */
+html:root body [class*="SNx2jG_marks"] {
+  scale: 1 0.4;
+  transform-origin: 50% 50%;
+}
+
+html:root body [class*="SNx2jG_frame"] [class*="_mark"]::before {
   background: rgba(128, 132, 138, 0.55) !important;
   opacity: 1 !important;
+  height: 5px !important;
 }
 
-html:root body :is([class*="SNx2jG_frame"], [data-conversation-scroll] [class*="_frame"]:has([class*="_marks"])) [class*="_markUnloaded"]::before {
-  opacity: 0.4 !important;
+html:root body [class*="SNx2jG_frame"] [class*="_markUnloaded"]::before {
+  opacity: 1 !important;
 }
 
-html:root body :is([class*="SNx2jG_frame"], [data-conversation-scroll] [class*="_frame"]:has([class*="_marks"])) [class*="_markActive"]::before {
+html:root body [class*="SNx2jG_frame"] [class*="_markActive"]::before {
   background: var(--dsw-alias-brand-primary) !important;
   opacity: 1 !important;
+  width: 25px !important;
+  height: 10px !important;
   transform: translateY(-50%) scaleX(1) !important;
 }
 
@@ -3293,6 +3331,18 @@ html:root body .lc-tip {
 }
 
 html:root body[data-ds-dark-theme] .lc-tip {
+  background: rgba(16, 17, 20, var(--hud-settings-alpha, 0.95)) !important;
+}
+
+/* Turn-rail hover preview: the host paints it with --dsw-alias-bg-layer-1,
+   which is not one of the dialog surfaces, so bind it explicitly. */
+html:root body [class*="SNx2jG_preview"] {
+  background: rgba(244, 255, 255, var(--hud-settings-alpha, 0.95)) !important;
+  -webkit-backdrop-filter: blur(var(--hud-settings-blur, 18px)) saturate(112%);
+  backdrop-filter: blur(var(--hud-settings-blur, 18px)) saturate(112%);
+}
+
+html:root body[data-ds-dark-theme] [class*="SNx2jG_preview"] {
   background: rgba(16, 17, 20, var(--hud-settings-alpha, 0.95)) !important;
 }
 
