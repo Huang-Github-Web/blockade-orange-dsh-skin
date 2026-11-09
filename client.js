@@ -2961,21 +2961,22 @@ html:root body ::-webkit-scrollbar-thumb:active {
 /* Turn navigator rail (right edge jump marks). The host hides it below a
    container width of 900px; with the skin's column geometry that threshold is
    hit too early, so keep it mounted and give it the skin palette: grey marks,
-   brand orange for the active Turn. */
-html:root body [class*="_frame"]:has([class*="_marks"]) {
+   brand orange for the active Turn. Scope strictly to the rail frame — the
+   generic [class*="_frame"] would also match the app's layout frame. */
+html:root body :is([class*="SNx2jG_frame"], [data-conversation-scroll] [class*="_frame"]:has([class*="_marks"])) {
   display: block !important;
 }
 
-html:root body [class*="_frame"]:has([class*="_marks"]) [class*="_mark"]::before {
+html:root body :is([class*="SNx2jG_frame"], [data-conversation-scroll] [class*="_frame"]:has([class*="_marks"])) [class*="_mark"]::before {
   background: rgba(128, 132, 138, 0.55) !important;
   opacity: 1 !important;
 }
 
-html:root body [class*="_frame"]:has([class*="_marks"]) [class*="_markUnloaded"]::before {
+html:root body :is([class*="SNx2jG_frame"], [data-conversation-scroll] [class*="_frame"]:has([class*="_marks"])) [class*="_markUnloaded"]::before {
   opacity: 0.4 !important;
 }
 
-html:root body [class*="_frame"]:has([class*="_marks"]) [class*="_markActive"]::before {
+html:root body :is([class*="SNx2jG_frame"], [data-conversation-scroll] [class*="_frame"]:has([class*="_marks"])) [class*="_markActive"]::before {
   background: var(--dsw-alias-brand-primary) !important;
   opacity: 1 !important;
   transform: translateY(-50%) scaleX(1) !important;
