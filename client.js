@@ -107,6 +107,12 @@ html:root body {
   --dsw-alias-state-business-tertiary: rgba(180, 95, 16, 0.12);
   --dsw-alias-interactive-bg-hover-accent: rgba(217, 102, 0, 0.10);
   --hud-selection: rgba(217, 102, 0, 0.12);
+  /* Row plate for popup/list rows (menu items, listbox options). A white wash
+     is invisible on the light menu surface and kills the hover/selection
+     highlight, so the light theme keeps the idle rows clean and marks the
+     active row with a dark wash; the dark theme keeps its original values. */
+  --hud-plate: rgba(20, 22, 26, 0);
+  --hud-plate-strong: rgba(20, 22, 26, 0.09);
   --hud-main-panel: rgba(255, 255, 255, 0.45);
   --hud-bracket: rgba(20, 22, 26, 0.22);
   --hud-node: rgba(20, 22, 26, 0.38);
@@ -181,6 +187,8 @@ html:root body[data-ds-dark-theme] {
   --dsw-alias-state-business-tertiary: rgba(232, 134, 42, 0.16);
   --dsw-alias-interactive-bg-hover-accent: rgba(255, 127, 0, 0.16);
   --hud-selection: rgba(255, 127, 0, 0.16);
+  --hud-plate: rgba(255, 255, 255, 0.05);
+  --hud-plate-strong: rgba(255, 255, 255, 0.08);
   --hud-main-panel: rgba(16, 17, 20, 0.50);
   --hud-bracket: rgba(255, 255, 255, 0.18);
   --hud-node: rgba(255, 255, 255, 0.30);
@@ -2501,7 +2509,7 @@ html:root body [data-dockkit-tab]:not(:hover),
 html:root body .dsh-hud-settings__row:not(:hover),
 html:root body [class*="_toggleRow"]:not(:hover),
 html:root body [class*="_optionsRow"]:not(:hover) {
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--hud-plate);
   border-radius: 2px;
 }
 
@@ -2511,7 +2519,7 @@ html:root body [role="option"][aria-selected="true"],
 html:root body [data-dockkit-tab][aria-selected="true"],
 html:root body [class*="_navCell"][class*="active"],
 html:root body [aria-current="true"] {
-  background: rgba(255, 255, 255, 0.08);
+  background: var(--hud-plate-strong);
   border-radius: 2px;
 }
 
@@ -2532,7 +2540,7 @@ html:root body .dsh-hud-settings__row::after {
 /* Level 2: the bar alone marks the hovered item, no orange fill. */
 html:root body [role="menuitem"]:hover,
 html:root body [role="option"]:hover {
-  background: rgba(255, 255, 255, 0.08);
+  background: var(--hud-plate-strong);
   color: var(--dsw-alias-label-primary);
 }
 
