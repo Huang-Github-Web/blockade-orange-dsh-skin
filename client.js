@@ -18,8 +18,8 @@ window.__ModuleLoader__.load({
     // working through theme switches without any CSS.
     const TOKENS = {
       '--dsw-alias-bg-base': { light: 'rgba(223, 225, 229, 0)', dark: 'rgba(13, 14, 16, 0)' },
-      '--dsw-alias-bg-layer-1': { light: 'rgba(255, 255, 255, 0.58)', dark: 'rgba(27, 28, 32, 0.52)' },
-      '--dsw-alias-bg-layer-2': { light: 'rgba(242, 243, 246, 0.52)', dark: 'rgba(35, 37, 42, 0.46)' },
+      '--dsw-alias-bg-layer-1': { light: 'rgba(255, 255, 255, 0.90)', dark: 'rgba(27, 28, 32, 0.86)' },
+      '--dsw-alias-bg-layer-2': { light: 'rgba(242, 243, 246, 0.88)', dark: 'rgba(35, 37, 42, 0.84)' },
       '--dsw-alias-bg-overlay': { light: 'rgba(255, 255, 255, 0.97)', dark: 'rgba(24, 25, 30, 0.95)' },
       '--dsw-alias-border-l1': { light: 'rgba(20, 22, 26, 0.10)', dark: 'rgba(255, 255, 255, 0.07)' },
       '--dsw-alias-border-l2': { light: 'rgba(20, 22, 26, 0.17)', dark: 'rgba(255, 255, 255, 0.13)' },
@@ -79,11 +79,11 @@ html:root body {
   text-shadow:
     0 1px 1px rgba(0, 0, 0, calc(0.10 * var(--hud-text-shadow, 1))),
     0 2px 2px rgba(0, 0, 0, calc(0.05 * var(--hud-text-shadow, 1)));
-  --dsw-alias-bg-layer-3: rgba(234, 236, 239, 0.48);
+  --dsw-alias-bg-layer-3: rgba(234, 236, 239, 0.86);
   --dsw-alias-border-l3: rgba(20, 22, 26, 0.24);
   --dsw-alias-border-l4: rgba(20, 22, 26, 0.32);
 
-  --dsw-specific-input-major: rgba(255, 255, 255, 0.62);
+  --dsw-specific-input-major: rgba(255, 255, 255, 0.92);
   --dsw-specific-bubble: rgba(232, 234, 238, 0.56);
   --dsw-specific-bubble-highlight: rgba(217, 102, 0, 0.14);
   --dsw-specific-menu: rgba(255, 255, 255, 0.93);
@@ -152,12 +152,12 @@ html:root body[data-ds-dark-theme] {
   text-shadow:
     0 1px 1px rgba(0, 0, 0, calc(0.33 * var(--hud-text-shadow, 1))),
     0 3px 2px rgba(255, 255, 255, calc(0.11 * var(--hud-text-shadow, 1)));
-  --dsw-alias-bg-layer-3: rgba(44, 46, 52, 0.42);
+  --dsw-alias-bg-layer-3: rgba(44, 46, 52, 0.82);
   --dsw-alias-label-tertiary: #7c828b;
   --dsw-alias-border-l3: rgba(255, 255, 255, 0.18);
   --dsw-alias-border-l4: rgba(255, 255, 255, 0.24);
 
-  --dsw-specific-input-major: rgba(31, 33, 38, 0.55);
+  --dsw-specific-input-major: rgba(31, 33, 38, 0.88);
   --dsw-specific-bubble: rgba(42, 44, 50, 0.50);
   --dsw-specific-bubble-highlight: rgba(255, 127, 0, 0.20);
   --dsw-specific-menu: rgba(20, 21, 25, 0.90);
@@ -3248,9 +3248,12 @@ html:root body .dshRemoteHostReferencePanel {
   backdrop-filter: blur(20px) saturate(125%);
 }
 
-/* The remote plugin draws its own full-screen backdrop instead of the host
-   mask, so it needs the blur explicitly. */
-html:root body .dshRemoteBackdrop {
+/* The remote plugins draw their own full-screen backdrop with
+   --dsw-alias-bg-mask-3 instead of the host mask, so they need the blur
+   explicitly: ds-harness-remote (.dshRemoteBackdrop) and
+   @zhangfengshun/dsh-remote-ssh (.rssh-modal-mask). */
+html:root body .dshRemoteBackdrop,
+html:root body .rssh-modal-mask {
   -webkit-backdrop-filter: blur(var(--hud-settings-blur, 18px)) saturate(112%);
   backdrop-filter: blur(var(--hud-settings-blur, 18px)) saturate(112%);
 }
@@ -3261,6 +3264,13 @@ html:root body [class*="_overlay"]:has([class*="_navList"]) [class*="_mask"],
 html:root body [class*="_mask_"] {
   -webkit-backdrop-filter: blur(var(--hud-settings-blur, 18px)) saturate(112%) !important;
   backdrop-filter: blur(var(--hud-settings-blur, 18px)) saturate(112%) !important;
+}
+
+/* dsh-context modal backdrop: it paints --dsw-alias-bg-mask-1 by itself with
+   no blur, so give it the skin frost like the host masks. */
+html:root body .lc-modal-backdrop {
+  -webkit-backdrop-filter: blur(var(--hud-settings-blur, 18px)) saturate(112%);
+  backdrop-filter: blur(var(--hud-settings-blur, 18px)) saturate(112%);
 }
 
 /* The changed-files card in the transcript follows the same panel-opacity
@@ -3297,6 +3307,25 @@ html:root body [data-changes-hover-preview] {
 
 html:root body[data-ds-dark-theme] [data-changes-hover-preview] {
   background: rgba(16, 17, 20, var(--hud-settings-alpha, 0.95)) !important;
+}
+
+/* Surface frost: --dsw-alias-bg-layer-1/-2/-3 and --dsw-specific-input-major
+   are raised in the token blocks above. Every card-level surface that paints
+   with them also gets the skin backdrop blur, so the fill and the frost follow
+   the same 背景模糊度 slider. Blur is deliberately limited to card/popover
+   surfaces: running it on the large columns or on every chip/table cell would
+   multiply GPU cost. Lite mode and the OS reduced-transparency preference both
+   keep it off. The workspace hover card is excluded (its own hover cost). */
+@media (prefers-reduced-transparency: no-preference) {
+  html:root body:not([data-hud-lite]) [class*="_card"]:not([data-composer-card]):not([class*="_card_bgejw"]):not([style*="--dsh-hover-preview-fade"]),
+  html:root body:not([data-hud-lite]) [class*="_fileCard"],
+  html:root body:not([data-hud-lite]) [class*="_popover_"],
+  html:root body:not([data-hud-lite]) .lc-card,
+  html:root body:not([data-hud-lite]) .lc-gran,
+  html:root body:not([data-hud-lite]) .lc-kinds {
+    -webkit-backdrop-filter: blur(var(--hud-settings-blur, 18px)) saturate(112%);
+    backdrop-filter: blur(var(--hud-settings-blur, 18px)) saturate(112%);
+  }
 }
 
 /* Custom fonts (Settings -> 字体 · Typography): the UI font feeds the host's
