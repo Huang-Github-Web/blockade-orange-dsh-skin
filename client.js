@@ -4492,16 +4492,43 @@ html:root body[data-hud-lite] .dsh-hud-menu-frost {
           const dim = document.createElement('div');
           dim.className = 'dsh-hud-dim';
           document.body.appendChild(dim);
-          const onBlur = () => document.documentElement.setAttribute('data-hud-blur', 'true');
-          const onFocus = () => document.documentElement.removeAttribute('data-hud-blur');
-          const onVis = () => { if (document.hidden) onBlur(); else onFocus(); };
+          // Clicking into an in-app iframe (e.g. the MCP connector panel, which
+          // hosts its UI in an iframe) makes Chromium fire `window.blur` even
+          // though the app is still in the foreground; the parent's
+          // document.activeElement becomes that IFRAME. Treat an active iframe
+          // as "still focused", otherwise the whole HUD dims and frosts behind
+          // the panel.
+          const inAppFrame = () => {
+            const active = document.activeElement;
+            if (!active || (active.tagName !== 'IFRAME' && active.tagName !== 'FRAME')) return false;
+            // Only counts while that frame's own document still has focus; if the
+            // window really lost focus, the child document loses it too.
+            try {
+              const doc = active.contentDocument || active.contentWindow?.document;
+              return !!doc && doc.hasFocus();
+            } catch (error) {
+              return true; // cross-origin frame while visible
+            }
+          };
+          const sync = () => {
+            const dimmed = document.hidden || (!document.hasFocus() && !inAppFrame());
+            document.documentElement.toggleAttribute('data-hud-blur', dimmed);
+          };
+          const onBlur = () => window.setTimeout(sync, 0);
+          const onFocus = () => sync();
+          const onVis = () => sync();
           window.addEventListener('blur', onBlur);
           window.addEventListener('focus', onFocus);
           document.addEventListener('visibilitychange', onVis);
+          // Recover if focus returns to the app chrome without a window focus event.
+          document.addEventListener('pointerdown', onFocus, true);
+          document.addEventListener('focusin', onFocus, true);
           return () => {
             window.removeEventListener('blur', onBlur);
             window.removeEventListener('focus', onFocus);
             document.removeEventListener('visibilitychange', onVis);
+            document.removeEventListener('pointerdown', onFocus, true);
+            document.removeEventListener('focusin', onFocus, true);
             document.documentElement.removeAttribute('data-hud-blur');
             dim.remove();
           };
