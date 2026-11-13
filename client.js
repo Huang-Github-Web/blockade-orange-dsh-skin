@@ -1874,6 +1874,45 @@ html:root body [class*="_centerCol"]::before {
   background: rgba(255, 255, 255, 0.05);
 }
 
+/* Readout-order editor: a labelled block of movable rows. */
+.dsh-hud-settings__field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 0;
+  border-bottom: 0.5px solid var(--dsw-alias-border-l1);
+}
+
+.dsh-hud-settings__order {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.dsh-hud-settings__orderrow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.dsh-hud-settings__orderlabel {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 12px;
+  color: var(--dsw-alias-label-secondary);
+}
+
+.dsh-hud-settings__move {
+  min-width: 28px;
+  padding: 2px 8px;
+  line-height: 1.2;
+}
+
+.dsh-hud-settings__move:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
 .dsh-hud-settings__label {
   font-size: 12px;
   letter-spacing: 0.04em;
@@ -3475,6 +3514,7 @@ html:root body[data-hud-lite] .dsh-hud-menu-frost {
       contours: true,       // the contour map itself; off leaves a clean canvas
       bg: '',               // custom background: a CSS image value or a data URL
       showStats: true,      // sidebar readout cluster (bottom-left stats panel)
+      statOrder: null,      // array of stat kinds; display order of the readout rows (null = default)
       settingsFill: 0.97,   // settings dialog panel opacity, 0..1 (1 = opaque)
       settingsBlur: 0.6,    // background blur behind dialogs, 0..1 (0%..100%)
       uiFont: '',           // interface font list; empty = skin default Borda
@@ -3596,13 +3636,41 @@ html:root body[data-hud-lite] .dsh-hud-menu-frost {
       generic: ['M2.5 2.5h9v9h-9z', 'M5 7h4'],
     };
 
-    function classify(text) {
-      if (/tok\/s|tok\/sec|tok\/秒/i.test(text)) return 'speed';
-      if (/缓存|cache/i.test(text)) return 'cache';
-      if (/%/.test(text)) return 'context';
-      if (/轮|步|turn|step/i.test(text)) return 'turns';
-      if (/tok/i.test(text)) return 'tokens';
-      return 'generic';
+    // ── Readout ordering ────────────────────────────────────────────────────
+    // Each readout row is bucketed into one stable kind; the settings page lets
+    // the user reorder these kinds, and the renderer sorts the rows by that
+    // order while keeping same-kind rows in their original sequence.
+    const STAT_KINDS = ['turns', 'steps', 'speed', 'tokens', 'cache', 'context', 'other'];
+    const STAT_KIND_LABELS = {
+      turns: '轮次 · Turns',
+      steps: '步数 · Steps',
+      speed: '输出速度 · TPS',
+      tokens: 'Tokens 用量',
+      cache: '缓存命中 · Cache',
+      context: '上下文占比 · Context',
+      other: '其它 · Other',
+    };
+    // Icons reuse the existing glyph set (steps shares the turns glyph).
+    const STAT_KIND_ICON = { turns: 'turns', steps: 'turns', speed: 'speed', tokens: 'tokens', cache: 'cache', context: 'context', other: 'generic' };
+
+    function normalizeStatOrder(raw) {
+      const valid = Array.isArray(raw) ? raw.filter((kind) => STAT_KINDS.indexOf(kind) >= 0) : [];
+      const out = [];
+      valid.forEach((kind) => { if (out.indexOf(kind) < 0) out.push(kind); });
+      STAT_KINDS.forEach((kind) => { if (out.indexOf(kind) < 0) out.push(kind); });
+      return out;
+    }
+
+    /** Bucket one value/unit pair into a stable kind for ordering. */
+    function statKindOf(pair) {
+      const unit = pair.unit || '';
+      const lead = pair.lead || '';
+      if (unit === '轮') return 'turns';
+      if (unit === '步') return 'steps';
+      if (/^tok\/(s|sec)$/i.test(unit)) return 'speed';
+      if (unit === '%') return /缓存|cache/i.test(lead) ? 'cache' : 'context';
+      if (/tok/i.test(unit)) return 'tokens';
+      return 'other';
     }
 
     const LEADING_UNIT = /^(轮|步|次|项|个|条|秒|分)(?=\s|$)/;
@@ -3774,6 +3842,37 @@ html:root body[data-hud-lite] .dsh-hud-menu-frost {
       // options that only make sense under a particular parent choice.
       const condRow = (visible, label, control) => (visible ? row(label, control) : null);
 
+      // Reorder one readout kind up/down in the persisted statOrder array.
+      const moveStatOrder = (kind, dir) => {
+        const order = normalizeStatOrder(config.statOrder);
+        const from = order.indexOf(kind);
+        const to = from + dir;
+        if (from < 0 || to < 0 || to >= order.length) return;
+        order.splice(to, 0, order.splice(from, 1)[0]);
+        update({ statOrder: order });
+      };
+
+      const statOrderBlock = () => h('div', { className: 'dsh-hud-settings__order' },
+        ...normalizeStatOrder(config.statOrder).map((kind, index, order) => h('div', {
+          className: 'dsh-hud-settings__orderrow',
+          key: kind,
+        },
+          h('span', { className: 'dsh-hud-settings__orderlabel' }, STAT_KIND_LABELS[kind] || kind),
+          h('button', {
+            type: 'button',
+            className: 'dsh-hud-settings__btn dsh-hud-settings__move',
+            disabled: index === 0,
+            'aria-label': '上移',
+            onClick: () => moveStatOrder(kind, -1),
+          }, '↑'),
+          h('button', {
+            type: 'button',
+            className: 'dsh-hud-settings__btn dsh-hud-settings__move',
+            disabled: index === order.length - 1,
+            'aria-label': '下移',
+            onClick: () => moveStatOrder(kind, 1),
+          }, '↓'))));
+
       // Font preview: one sample string rendered normal / bold / italic.
       const fontPreview = (label, raw) => {
         const stack = fontStackFor(raw);
@@ -3926,6 +4025,9 @@ html:root body[data-hud-lite] .dsh-hud-menu-frost {
         h('h3', { className: 'dsh-hud-settings__subtitle' }, '读数面板 · Readout panel'),
         row('显示统计面板 · Show stats panel', toggle('showStats')),
         condRow(statsOn, '列数 · Columns', segment('cols', [[1, '1'], [2, '2']])),
+        statsOn ? h('div', { className: 'dsh-hud-settings__field' },
+          h('span', { className: 'dsh-hud-settings__label' }, '显示顺序 · Row order'),
+          statOrderBlock()) : null,
         condRow(statsOn, '宽度 · Width', segment('width', [['content', '内容宽 · Content'], ['sidebar', '侧栏宽 · Sidebar'], ['px', '固定值 · Fixed']])),
         condRow(statsOn && config.width === 'px', '宽度 · Width (px)', slider('widthPx', 80, 900, 1, 'px')),
         condRow(statsOn, '对齐方式 · Anchor', segment('baseline', [['account', '账号 · Account'], ['free', '自由 · Free'], ['composer', '输入框 · Composer'], ['window', '窗口 · Window']])),
@@ -4087,31 +4189,45 @@ html:root body[data-hud-lite] .dsh-hud-menu-frost {
 
       const samples = [];
       const rowsCache = [];
+      let rowsSignature = null;
 
       const render = () => {
         const segments = readSegments();
         const pairs = [];
 
-        // The host stopped rendering turn/step counts, so count them ourselves:
-        // one user message is a turn, one tool call is a step.
-        const turns = document.querySelectorAll('[data-chat-flow-kind="user"]').length;
-        const steps = document.querySelectorAll('[data-chat-flow-kind="tool-call"], [class*="_callRow"]').length;
-        if (turns > 0) pairs.push({ text: 'turns', pair: { value: String(turns), unit: '轮', lead: '' } });
-        if (steps > 0) pairs.push({ text: 'steps', pair: { value: String(steps), unit: '步', lead: '' } });
+        // Older hosts without the composer stat pills get a coarse fallback:
+        // one user message is a turn, one tool call is a step. When the host
+        // renders its own whole-log counts we use those instead — the DOM count
+        // is window-scoped and would otherwise duplicate the real figures.
+        const hasHostStats = document.querySelector('[data-composer-stat]') !== null;
+        if (!hasHostStats) {
+          const turns = document.querySelectorAll('[data-chat-flow-kind="user"]').length;
+          const steps = document.querySelectorAll('[data-chat-flow-kind="tool-call"], [class*="_callRow"]').length;
+          if (turns > 0) pairs.push({ text: 'turns', pair: { value: String(turns), unit: '轮', lead: '' } });
+          if (steps > 0) pairs.push({ text: 'steps', pair: { value: String(steps), unit: '步', lead: '' } });
+        }
 
         segments.forEach((segment) => { pairUp(segment).forEach((pair) => pairs.push({ text: segment, pair })); });
 
+        // Sort rows by the user's configured kind order; rows of the same kind
+        // keep their original sequence.
+        const order = normalizeStatOrder(currentCfg.statOrder);
+        const ranked = pairs.map((entry, index) => ({ entry, kind: statKindOf(entry.pair), index }));
+        ranked.sort((a, b) => (order.indexOf(a.kind) - order.indexOf(b.kind)) || (a.index - b.index));
+
         // Build once, then only touch the text nodes: rebuilding innerHTML would
-        // restart the bar transitions on every tick.
-        if (rowsCache.length !== pairs.length) {
+        // restart the bar transitions on every tick. Rebuild when the kind
+        // sequence changes (order edit, or a stat appears/disappears).
+        const signature = ranked.map((item) => item.kind).join('|');
+        if (signature !== rowsSignature) {
+          rowsSignature = signature;
           list.textContent = '';
           rowsCache.length = 0;
-          pairs.forEach((entry, index) => {
-            const kind = classify(entry.pair.unit + ' ' + entry.pair.lead);
+          ranked.forEach((item, index) => {
             const row = document.createElement('div');
             row.className = 'dsh-hud-stats__row';
             row.innerHTML =
-              '<span class="dsh-hud-stats__icon-box' + (index === 0 ? ' is-primary' : '') + '">' + icon(kind) + '</span>' +
+              '<span class="dsh-hud-stats__icon-box' + (index === 0 ? ' is-primary' : '') + '">' + icon(STAT_KIND_ICON[item.kind] || 'generic') + '</span>' +
               '<span class="dsh-hud-stats__value' + (index === 0 ? ' is-primary' : '') + '"></span>' +
               '<span class="dsh-hud-stats__label"></span>';
             list.appendChild(row);
@@ -4125,10 +4241,13 @@ html:root body[data-hud-lite] .dsh-hud-menu-frost {
           });
         }
 
-        pairs.forEach((entry, index) => {
+        ranked.forEach((item, index) => {
+          const entry = item.entry;
           const slot = rowsCache[index];
           if (!slot) return;
-          const unitRight = index < 4;
+          // Counts (轮/步) show the unit as a trailing label; rates and token
+          // figures keep it inline with the number.
+          const unitRight = item.kind === 'turns' || item.kind === 'steps';
           const unit = entry.pair.unit || '';
           const lead = entry.pair.lead || '';
           const numeric = parseFloat(entry.pair.value);
@@ -4233,7 +4352,7 @@ html:root body[data-hud-lite] .dsh-hud-menu-frost {
         observer.observe(column, { childList: true, subtree: true });
       };
       watch();
-      const onHud = () => { try { applyGeometry(); place(); } catch (error) { /* never break the app */ } };
+      const onHud = () => { try { applyGeometry(); place(); render(); } catch (error) { /* never break the app */ } };
       window.addEventListener('paper-skin:hud', onHud);
       const stopLoop = startLoop(() => { watch(); tick(); }, 700);
       return () => {
