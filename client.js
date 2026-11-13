@@ -1377,17 +1377,25 @@ html:root body[data-hud-no-dockstyle] [class*="_rightbarCol"] {
 
 /* Window blur dim: while the app is unfocused it dims AND frosts the whole
    window, with the frost radius coming from the same 背景模糊 · Background blur
-   setting the rest of the skin uses. */
+   setting the rest of the skin uses. The z-index sits above every in-page
+   overlay — most notably the whale widget (z-index 9999) and any high-z plugin
+   popups — so the frost covers the entire web layer instead of leaving those
+   components sharp on top of it. (Native window buttons are drawn by the OS
+   above the web contents and cannot be covered from the renderer.) */
 .dsh-hud-dim {
   position: fixed;
   inset: 0;
-  z-index: 9998;
+  z-index: 2147483000;
   pointer-events: none;
   background: rgba(4, 5, 7, 0);
   transition: background-color 220ms ease, backdrop-filter 220ms ease, -webkit-backdrop-filter 220ms ease;
 }
 
 html:root[data-hud-blur] .dsh-hud-dim {
+  /* Capture input so a click lands on the mask instead of the UI beneath it;
+     the effect turns this into a focus-and-dismiss action. */
+  pointer-events: auto;
+  cursor: default;
   background: rgba(4, 5, 7, 0.34);
   -webkit-backdrop-filter: blur(var(--hud-settings-blur, 18px)) saturate(112%);
   backdrop-filter: blur(var(--hud-settings-blur, 18px)) saturate(112%);
@@ -4518,13 +4526,30 @@ html:root body[data-hud-lite] .dsh-hud-menu-frost {
               return true; // cross-origin frame while visible
             }
           };
+          // While a click on the mask is being handled we must not let the
+          // still-unfocused window immediately re-apply the mask.
+          let suppressUntil = 0;
           const sync = () => {
+            if (Date.now() < suppressUntil) {
+              document.documentElement.removeAttribute('data-hud-blur');
+              return;
+            }
             const dimmed = document.hidden || (!document.hasFocus() && !inAppFrame());
             document.documentElement.toggleAttribute('data-hud-blur', dimmed);
           };
           const onBlur = () => window.setTimeout(sync, 0);
           const onFocus = () => sync();
           const onVis = () => sync();
+          // The mask sits above the whole UI, so a press on it never reaches the
+          // components underneath: it refocuses the window and dismisses the mask.
+          const onMaskPress = (event) => {
+            event.stopPropagation();
+            suppressUntil = Date.now() + 600;
+            document.documentElement.removeAttribute('data-hud-blur');
+            try { window.focus(); } catch (error) { /* not focusable */ }
+          };
+          dim.addEventListener('pointerdown', onMaskPress);
+          dim.addEventListener('mousedown', onMaskPress);
           window.addEventListener('blur', onBlur);
           window.addEventListener('focus', onFocus);
           document.addEventListener('visibilitychange', onVis);
@@ -4532,6 +4557,8 @@ html:root body[data-hud-lite] .dsh-hud-menu-frost {
           document.addEventListener('pointerdown', onFocus, true);
           document.addEventListener('focusin', onFocus, true);
           return () => {
+            dim.removeEventListener('pointerdown', onMaskPress);
+            dim.removeEventListener('mousedown', onMaskPress);
             window.removeEventListener('blur', onBlur);
             window.removeEventListener('focus', onFocus);
             document.removeEventListener('visibilitychange', onVis);
