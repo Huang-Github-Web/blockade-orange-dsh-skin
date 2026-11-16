@@ -3482,6 +3482,17 @@ html:root body[data-hud-lite] .dsh-hud-menu-frost {
     display: none !important;
   }
 }
+
+/* Intelligent-UI (catalog Choice / Form) primary buttons paint their label with
+   var(--ui-bg), which maps to --dsw-alias-bg-base. The skin keeps that token
+   transparent so the wallpaper shows through the app base, so the label became
+   transparent too and reads as black on the dark pill. Re-point just the label
+   at the inverted text colour: white on the light theme's dark pill, dark on
+   the dark theme's light pill — legible in both. */
+html:root body .diui-button[data-variant="primary"],
+html:root body .diui-choice-submit {
+  color: var(--dsw-alias-label-primary-inverted, #fff);
+}
 `;
 
     // ── HUD stat cluster ─────────────────────────────────────────────────────
