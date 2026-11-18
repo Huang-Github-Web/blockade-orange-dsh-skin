@@ -4733,6 +4733,12 @@ html:root body .diui-choice-submit {
             const nodes = document.querySelectorAll('[data-menu-material="translucent"]');
             for (const el of nodes) {
               if (!el.closest('[data-composer-overlay]') && !el.closest('[data-slot="conversation.input.overlay"]')) continue;
+              // The hero / new-session screen wraps the composer in an isolated
+              // stacking context (data-phase=hero → isolation:isolate) with no
+              // positive z-index seat, so a body-level frost at z-index 8 paints
+              // ABOVE the popup and blurs its own rows. Leave that screen to the
+              // menu's own backdrop-filter instead of covering its content.
+              if (el.closest('[data-phase="hero"], [data-content-phase="hero"]')) continue;
               const rect = el.getBoundingClientRect();
               const cs = getComputedStyle(el);
               if (rect.width > 1 && rect.height > 1 && cs.display !== 'none' && cs.visibility !== 'hidden') {
