@@ -2485,6 +2485,23 @@ html:root body [data-slot="main"]
   opacity: 1;
 }
 
+/* Overlay buttons that cover a whole card (e.g. the deliverables file preview's
+   *_cardPreview) must stay absolutely positioned. The level-2 rule above turns
+   every main-slot button into position:relative so its hover bar can be placed;
+   on such an overlay that makes the button an in-flow flex item, which collapses
+   the card's own text to zero width (filename/description vanish). Keep the
+   overlay in place and drop the stray bar. */
+html:root body [data-slot="main"] [class*="_cardPreview"] {
+  position: absolute !important;
+  inset: 0 !important;
+  padding: 0 !important;
+}
+
+html:root body [data-slot="main"] [class*="_cardPreview"]::after {
+  content: none !important;
+  display: none !important;
+}
+
 /* Plugin / option rows: the host renders them as "_rows > _row" (see
    ui-plugin-manager), so the bar goes on the row itself, never on the switch
    inside it. */
